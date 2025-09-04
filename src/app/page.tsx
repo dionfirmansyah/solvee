@@ -4,21 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Bell, BellOff, Check, Download, Send, Smartphone, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-// Mock actions untuk demo - ganti dengan yang asli
-const sendNotification = async (message: string) => {
-    console.log('Sending notification:', message);
-    return new Promise((resolve) => setTimeout(resolve, 1000));
-};
-
-const subscribeUser = async (subscription: any) => {
-    console.log('Subscribing user:', subscription);
-    return new Promise((resolve) => setTimeout(resolve, 500));
-};
-
-const unsubscribeUser = async () => {
-    console.log('Unsubscribing user');
-    return new Promise((resolve) => setTimeout(resolve, 500));
-};
+// Import actions dari file asli Anda
+import { sendNotification, subscribeUser, unsubscribeUser } from './actions';
 
 function urlBase64ToUint8Array(base64String: string) {
     const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -49,8 +36,12 @@ function PushNotificationManager() {
 
     async function registerServiceWorker() {
         try {
-            // Mock untuk demo - dalam implementasi nyata gunakan kode asli
-            setSubscription(null); // Simulasi belum berlangganan
+            const registration = await navigator.serviceWorker.register('/sw.js', {
+                scope: '/',
+                updateViaCache: 'none',
+            });
+            const sub = await registration.pushManager.getSubscription();
+            setSubscription(sub);
         } catch (error) {
             console.error('Service worker registration failed:', error);
         }
@@ -59,11 +50,14 @@ function PushNotificationManager() {
     async function subscribeToPush() {
         setIsLoading(true);
         try {
-            // Mock untuk demo
-            await new Promise((resolve) => setTimeout(resolve, 1500));
-            const mockSubscription = { endpoint: 'mock://endpoint' } as any;
-            setSubscription(mockSubscription);
-            await subscribeUser(mockSubscription);
+            const registration = await navigator.serviceWorker.ready;
+            const sub = await registration.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!),
+            });
+            setSubscription(sub);
+            const serializedSub = JSON.parse(JSON.stringify(sub));
+            await subscribeUser(serializedSub);
         } catch (error) {
             console.error('Push subscription failed:', error);
             alert('Failed to subscribe to push notifications. Please check if VAPID keys are configured.');
@@ -73,7 +67,7 @@ function PushNotificationManager() {
 
     async function unsubscribeFromPush() {
         setIsLoading(true);
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        await subscription?.unsubscribe();
         setSubscription(null);
         await unsubscribeUser();
         setIsLoading(false);
@@ -344,7 +338,7 @@ export default function Home() {
                 {/* Header */}
                 <div className="mb-8 text-center">
                     <div className="bg-opacity-10 border-opacity-20 mb-4 inline-flex h-20 w-20 items-center justify-center rounded-2xl border border-white bg-white backdrop-blur-sm">
-                        <Bell className="h-10 w-10" />
+                        <Bell className="h-10 w-10 text-white" />
                     </div>
                     <h1 className="mb-3 bg-gradient-to-r from-white to-gray-300 bg-clip-text text-4xl font-bold text-transparent text-white md:text-5xl">
                         PWA Testing Hub
