@@ -3,9 +3,9 @@
 import { Button } from '@/components/ui/button';
 import { Bell, BellOff, Check, Download, Send, Smartphone, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { sendNotification, subscribeUser, unsubscribeUser } from './actions/push';
 
 // Import actions dari file asli Anda
-import { sendNotification, subscribeUser, unsubscribeUser } from './actions';
 
 function urlBase64ToUint8Array(base64String: string) {
     const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -51,13 +51,15 @@ function PushNotificationManager() {
         setIsLoading(true);
         try {
             const registration = await navigator.serviceWorker.ready;
+
             const sub = await registration.pushManager.subscribe({
                 userVisibleOnly: true,
                 applicationServerKey: urlBase64ToUint8Array(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!),
             });
             setSubscription(sub);
-            const serializedSub = JSON.parse(JSON.stringify(sub));
+            const serializedSub = sub.toJSON(); // 🔹 toJSON lebih aman
             await subscribeUser(serializedSub);
+            console.log('Subscribed:', serializedSub);
         } catch (error) {
             console.error('Push subscription failed:', error);
             alert('Failed to subscribe to push notifications. Please check if VAPID keys are configured.');
@@ -67,9 +69,11 @@ function PushNotificationManager() {
 
     async function unsubscribeFromPush() {
         setIsLoading(true);
-        await subscription?.unsubscribe();
+        if (subscription) {
+            await subscription.unsubscribe();
+            await unsubscribeUser(subscription.endpoint); // 🔹 kirim endpoint ke server
+        }
         setSubscription(null);
-        await unsubscribeUser();
         setIsLoading(false);
     }
 
@@ -346,7 +350,7 @@ export default function Home() {
                     <p className="mb-4 text-lg text-gray-300">Test Push Notifications & PWA Installation</p>
                     <div className="bg-opacity-10 border-opacity-20 inline-flex items-center rounded-full border border-white bg-white px-4 py-2 backdrop-blur-sm">
                         <div className="mr-3 h-2 w-2 animate-pulse rounded-full bg-green-400" />
-                        <span className="font-mono text-sm text-gray-300">{currentTime.toLocaleTimeString()}</span>
+                        {/* <span className="font-mono text-sm text-gray-300">{currentTime.toLocaleTimeString()}</span> */}
                     </div>
                 </div>
 
